@@ -1,37 +1,31 @@
 from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash
+from flask import Flask, abort, render_template, redirect, url_for, flash, request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
-from flask_gravatar import Gravatar
+# from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 # Import your forms from the forms.py
+from forms import RegisterForm
 from forms import CreatePostForm
 
-
-'''
-Make sure the required packages are installed: 
-Open the Terminal in PyCharm (bottom left). 
-
-On Windows type:
-python -m pip install -r requirements.txt
-
-On MacOS type:
-pip3 install -r requirements.txt
-
-This will install the packages from the requirements.txt for this project.
-'''
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
-# TODO: Configure Flask-Login
+# Configure Flask-login's Login Manager
+login_manager = LoginManager()
+login_manager.init_app(app)
 
+# Create a user_loader callback
+@login_manager.user_loader
+def load_user(user_id):
+    return db.get_or_404(User, user_id)
 
 # CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
@@ -51,27 +45,56 @@ class BlogPost(db.Model):
     img_url = db.Column(db.String(250), nullable=False)
 
 
-# TODO: Create a User table for all your registered users. 
-
+# CREATE TABLE IN DB
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    name = db.Column(db.String(1000))
 
 with app.app_context():
     db.create_all()
 
 
-# TODO: Use Werkzeug to hash the user's password when creating a new user.
-@app.route('/register')
+# Use Werkzeug to hash the user's password when creating a new user.
+@app.route('/register', methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    form = RegisterForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        result = db.session.execute(db.select(User).where(User.email == email))
+        user = result.scalar()
+
+        new_user = User(
+            email = form.email.data,
+            password = generate_password_hash(form.password.data, method="pbkdf2:sha256", salt_length=8),  # hash and salted poassword
+            name = form.name.data
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Log in and authenticate user after adding details to DB.
+        login_user(new_user)
+        # Can redirect and get name from teh current_user
+        return redirect(url_for("get_all_posts", name=form.name))
+    return render_template("register.html", form=form)
 
 
-# TODO: Retrieve a user from the database based on their email. 
-@app.route('/login')
+#  Retrieve a user from the database based on their email. 
+@app.route('/login', methods=["GET", "POST"])
 def login():
     return render_template("login.html")
 
 
 @app.route('/logout')
 def logout():
+
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        # Find user by email provided.
+        result = db.session.execute(db.select(User).where(User.email == email))
+        user = result.scalar()
     return redirect(url_for('get_all_posts'))
 
 
