@@ -9,7 +9,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 # Import your forms from the forms.py
-from forms import RegisterForm
+from forms import RegisterForm, LoginForm
 from forms import CreatePostForm
 
 
@@ -76,25 +76,37 @@ def register():
         # Log in and authenticate user after adding details to DB.
         login_user(new_user)
         # Can redirect and get name from teh current_user
-        return redirect(url_for("get_all_posts", name=form.name))
+        return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form)
 
 
 #  Retrieve a user from the database based on their email. 
 @app.route('/login', methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    error = None
+    form = LoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password.data
+        # Find user by email provided.
+        result = db.session.execute(db.select(User).where(User.email == email))
+        user = result.scalar()
+        if user:
+            # Check stored password hash against entered password hashed.
+            if check_password_hash(user.password, password):
+                login_user(user)
+                flash("You  were successfully logged in!")
+                return redirect(url_for("get_all_posts"))
+            else:
+                error = "Password is incorrect, please try again."
+        else:
+            error = "That email does not exist, please try again."
+    return render_template("login.html", error=error, form=form)
 
 
 @app.route('/logout')
 def logout():
-
-    if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
-        # Find user by email provided.
-        result = db.session.execute(db.select(User).where(User.email == email))
-        user = result.scalar()
+    logout_user()
     return redirect(url_for('get_all_posts'))
 
 
