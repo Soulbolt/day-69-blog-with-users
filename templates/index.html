@@ -16,6 +16,13 @@
     </div>
   </div>
 </header>
+          {% with messages = get_flashed_messages() %}
+          {% if messages %}
+          {% for message in messages %}
+          <p class="flashes" style="color: #0085A1; margin-left: 42%; font-size: x-large;">{{ message }}</p>
+          {% endfor %}
+          {% endif %}
+          {% endwith %}
 <!-- Main Content-->
 <div class="container px-4 px-lg-5">
   <div class="row gx-4 gx-lg-5 justify-content-center">

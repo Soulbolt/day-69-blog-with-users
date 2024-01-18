@@ -25,12 +25,12 @@ include "header.html" %}
           {% with messages = get_flashed_messages() %}
           {% if messages %}
           {% for message in messages %}
-          <p class=flashes>{{ message }}</p>
+          <p class="flashes" style="color: #0085A1; margin-left: 26%; font-size: x-large;">{{ message }}</p>
           {% endfor %}
           {% endif %}
           {% endwith %}
               {% if error %}
-              <p class="error">{{ error }}</p>
+              <p class="error" style="color: red; margin-left: 35%;">{{ error }}</p>
               {% endif %}
       <div class="col-lg-8 col-md-10 mx-auto">
         <!--render login form here-->
