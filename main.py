@@ -113,6 +113,7 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash("You were successfully logged out!")
     return redirect(url_for('get_all_posts'))
 
 
