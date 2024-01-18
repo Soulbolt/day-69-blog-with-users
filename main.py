@@ -7,7 +7,8 @@ from flask_login import UserMixin, login_user, LoginManager, current_user, logou
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import ForeignKey
 # Import your forms from the forms.py
 from forms import RegisterForm, LoginForm
 from forms import CreatePostForm
@@ -54,16 +55,22 @@ class BlogPost(db.Model):
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(250), nullable=False)
+    # Foreign key from user.id as a relationship to user table.
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Reference to user object, "posts" is the relationship to the user table
+    author: Mapped["User"] = relationship(back_populates="posts")
     img_url = db.Column(db.String(250), nullable=False)
 
 
 # CREATE TABLE IN DB
 class User(UserMixin, db.Model):
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     name = db.Column(db.String(1000))
+    # This is the list of Blogpost objects that belongs to each user. "author" is the relationship to the Blogpost table
+    posts: Mapped[list["BlogPost"]] = relationship(back_populates="author")
 
 with app.app_context():
     db.create_all()
