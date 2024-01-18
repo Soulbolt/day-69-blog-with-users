@@ -27,6 +27,19 @@ login_manager.init_app(app)
 def load_user(user_id):
     return db.get_or_404(User, user_id)
 
+def admin_check(func):
+    admin_id = 1
+    @wraps(func)
+        # function to check if current_user.id is equals to admin_id
+    def is_admin(*args, **kwargs):
+        # if id is not admin_id return abort(403) error
+        if current_user.id != admin_id:
+            return abort(403)
+        # else continue
+        return func(*args, **kwargs)
+    return is_admin
+
+
 # CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
 db = SQLAlchemy()
@@ -132,9 +145,10 @@ def show_post(post_id):
     return render_template("post.html", post=requested_post)
 
 
-# TODO: Use a decorator so only an admin user can create a new post
+# Use a decorator so only an admin user can create a new post
 @app.route("/new-post", methods=["GET", "POST"])
 @login_required
+@admin_check
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -152,9 +166,10 @@ def add_new_post():
     return render_template("make-post.html", form=form)
 
 
-# TODO: Use a decorator so only an admin user can edit a post
+# Use a decorator so only an admin user can edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 @login_required
+@admin_check
 def edit_post(post_id):
     post = db.get_or_404(BlogPost, post_id)
     edit_form = CreatePostForm(
