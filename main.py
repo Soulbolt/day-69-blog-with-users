@@ -76,15 +76,17 @@ class User(UserMixin, db.Model):
     comments: Mapped[list["Comment"]] = relationship(back_populates="comment_author")
 
 # Create comments table
-class Comment(db.model):
+class Comment(db.Model):
     __tablename__ = "comments"
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String(250), nullable=False)
+    text = db.Column(db.Text, nullable=False)
     date = db.Column(db.String(250), nullable=False)
     # Foreign key from user.id as a relationship to user table.
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # Reference to user object, "posts" is the relationship to the user table
     comment_author: Mapped["User"] = relationship(back_populates="comments")
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("blog_posts.id"))
     parent_post: Mapped["BlogPost"] = relationship(back_populates="comments")
 
 with app.app_context():
@@ -160,17 +162,12 @@ def get_all_posts():
 
 
 # TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods={"GET", "POST"})
 @login_required
 def show_post(post_id):
     form = CommentForm()
-    if form.validate_on_submit():
-        new_comment = Comment(
-            body = form.body.data,
-            date = date.today().strftime("%B %d, %Y")
-        )
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post, form=form, comments=new_comment)
+    return render_template("post.html", post=requested_post, form=form, logged_in=current_user.is_authenticated)
 
 
 # Use a decorator so only an admin user can create a new post
@@ -188,7 +185,6 @@ def add_new_post():
             author=current_user,
             date=date.today().strftime("%B %d, %Y")
         )
-        print(new_post.id)
         db.session.add(new_post)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
