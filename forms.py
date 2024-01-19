@@ -26,4 +26,6 @@ class LoginForm(FlaskForm):
     password = PasswordField(label="Password", validators=[DataRequired()])
     subbit = SubmitField(label="LET ME IN")
 
-# TODO: Create a CommentForm so users can leave comments below posts
+# Create a CommentForm so users can leave comments below posts
+    class CommentForm(FlaskForm):
+        comment = CKEditorField("Comment", validators=[DataRequired()])
