@@ -26,7 +26,7 @@ login_manager.init_app(app)
 # Create a user_loader callback
 @login_manager.user_loader
 def load_user(user_id):
-    return db.get_or_404(User, user_id)
+    return db.session.execute(db.select(User).where(User.id == user_id)).scalar()
 
 def admin_check(func):
     admin_id = 1
@@ -167,6 +167,7 @@ def add_new_post():
             author=current_user,
             date=date.today().strftime("%B %d, %Y")
         )
+        print(new_post.id)
         db.session.add(new_post)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
