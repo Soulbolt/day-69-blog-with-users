@@ -60,6 +60,8 @@ class BlogPost(db.Model):
     author: Mapped["User"] = relationship(back_populates="posts")
     img_url = db.Column(db.String(250), nullable=False)
 
+    comments: Mapped["Comment"] = relationship(back_populates="parent_post")
+
 
 # CREATE TABLE IN DB
 class User(UserMixin, db.Model):
@@ -70,6 +72,20 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(1000))
     # This is the list of Blogpost objects that belongs to each user. "author" is the relationship to the Blogpost table
     posts: Mapped[list["BlogPost"]] = relationship(back_populates="author")
+    # This is the list of Comment objects that belongs to each user. "author" is the relationship to the Comment table
+    comments: Mapped[list["Comment"]] = relationship(back_populates="comment_author")
+
+# Create comments table
+class Comment(db.model):
+    __tablename__ = "comments"
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(250), nullable=False)
+    date = db.Column(db.String(250), nullable=False)
+    # Foreign key from user.id as a relationship to user table.
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Reference to user object, "posts" is the relationship to the user table
+    comment_author: Mapped["User"] = relationship(back_populates="comments")
+    parent_post: Mapped["BlogPost"] = relationship(back_populates="comments")
 
 with app.app_context():
     db.create_all()
@@ -147,8 +163,14 @@ def get_all_posts():
 @app.route("/post/<int:post_id>")
 @login_required
 def show_post(post_id):
+    form = CommentForm()
+    if form.validate_on_submit():
+        new_comment = Comment(
+            body = form.body.data,
+            date = date.today().strftime("%B %d, %Y")
+        )
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post)
+    return render_template("post.html", post=requested_post, form=form, comments=new_comment)
 
 
 # Use a decorator so only an admin user can create a new post
