@@ -190,7 +190,6 @@ def show_post(post_id):
         )
         db.session.add(new_comment)
         db.session.commit()
-        print(requested_post.comments)
     return render_template("post.html", post=requested_post, form=form, current_user=current_user)
 
 
@@ -239,9 +238,10 @@ def edit_post(post_id):
     return render_template("make-post.html", form=edit_form, is_edit=True)
 
 
-# TODO: Use a decorator so only an admin user can delete a post
+# Use a decorator so only an admin user can delete a post
 @app.route("/delete/<int:post_id>")
 @login_required
+@admin_check
 def delete_post(post_id):
     post_to_delete = db.get_or_404(BlogPost, post_id)
     db.session.delete(post_to_delete)
