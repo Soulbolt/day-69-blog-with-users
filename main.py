@@ -2,13 +2,13 @@ from datetime import date
 from flask import Flask, abort, render_template, redirect, url_for, flash, request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
-# from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, login_required
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import ForeignKey
+# from flask_gravatar import Gravatar #package dependency deprecrated - would need to downgrade Flask to 2.3.3
 # Import your forms from the forms.py
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 
@@ -17,6 +17,16 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+
+#Gravatar for avatars
+# gravatar = Gravatar(app,
+#                     size=100,
+#                     rating='g',
+#                     default='retro',
+#                     force_default=False,
+#                     force_lower=False,
+#                     use_ssl=False,
+#                     base_url=None)
 
 # Configure Flask-login's Login Manager
 login_manager = LoginManager()
@@ -59,8 +69,8 @@ class BlogPost(db.Model):
     # Reference to user object, "posts" is the relationship to the user table
     author: Mapped["User"] = relationship(back_populates="posts")
     img_url = db.Column(db.String(250), nullable=False)
-
-    comments: Mapped["Comment"] = relationship(back_populates="parent_post")
+    # Reference to comment object, "parent_post" is the relationship to the comments table
+    comments: Mapped[list["Comment"]] = relationship(back_populates="parent_post")
 
 
 # CREATE TABLE IN DB
@@ -73,7 +83,7 @@ class User(UserMixin, db.Model):
     # This is the list of Blogpost objects that belongs to each user. "author" is the relationship to the Blogpost table
     posts: Mapped[list["BlogPost"]] = relationship(back_populates="author")
     # This is the list of Comment objects that belongs to each user. "author" is the relationship to the Comment table
-    comments: Mapped[list["Comment"]] = relationship(back_populates="comment_author")
+    comments: Mapped["Comment"] = relationship(back_populates="comment_author")
 
 # Create comments table
 class Comment(db.Model):
@@ -85,9 +95,9 @@ class Comment(db.Model):
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # Reference to user object, "posts" is the relationship to the user table
     comment_author: Mapped["User"] = relationship(back_populates="comments")
-
+    # Reference to blogpost object, "comments" is the relationship to the blogpost table
     post_id: Mapped[int] = mapped_column(ForeignKey("blog_posts.id"))
-    parent_post: Mapped["BlogPost"] = relationship(back_populates="comments")
+    parent_post: Mapped[list["BlogPost"]] = relationship(back_populates="comments")
 
 with app.app_context():
     db.create_all()
@@ -156,18 +166,32 @@ def logout():
 
 @app.route('/')
 def get_all_posts():
+    print(current_user)
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
     return render_template("index.html", all_posts=posts)
 
 
-# TODO: Allow logged-in users to comment on posts
+# Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>", methods={"GET", "POST"})
-@login_required
 def show_post(post_id):
     form = CommentForm()
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post, form=form, logged_in=current_user.is_authenticated)
+    if form.validate_on_submit():
+        if not current_user.is_authenticated:
+            flash("You need to login or register to comment.")
+            return redirect(url_for("login"))
+        
+        new_comment = Comment(
+            text = form.comment.data,
+            author_id=current_user.id,
+            post_id=requested_post.id,
+            date = date.today().strftime("%B %d, %Y - %X")
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        print(requested_post.comments)
+    return render_template("post.html", post=requested_post, form=form, current_user=current_user)
 
 
 # Use a decorator so only an admin user can create a new post
