@@ -81,7 +81,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
-    name = db.Column(db.String(1000))
+    name = db.Column(db.String(100))
     # This is the list of Blogpost objects that belongs to each user. "author" is the relationship to the Blogpost table
     posts: Mapped[list["BlogPost"]] = relationship(back_populates="author")
     # This is the list of Comment objects that belongs to each user. "author" is the relationship to the Comment table
@@ -168,7 +168,6 @@ def logout():
 
 @app.route('/')
 def get_all_posts():
-    print(current_user)
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
     return render_template("index.html", all_posts=posts)
@@ -262,4 +261,4 @@ def contact():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    app.run(debug=False, port=5002)
