@@ -11,10 +11,12 @@ from sqlalchemy import ForeignKey
 # from flask_gravatar import Gravatar #package dependency deprecrated - would need to downgrade Flask to 2.3.3
 # Import your forms from the forms.py
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
+import os
+from dotenv import load_dotenv
 
-
+load_dotenv()
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = os.getenv("FLASK_KEY")
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
@@ -51,7 +53,7 @@ def admin_check(func):
 
 
 # CONNECT TO DB
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DB_URI")
 db = SQLAlchemy()
 db.init_app(app)
 
@@ -186,7 +188,7 @@ def show_post(post_id):
             text = form.comment.data,
             author_id=current_user.id,
             post_id=requested_post.id,
-            date = date.today().strftime("%B %d, %Y - %X")
+            date = date.today().strftime("%B %d, %Y")
         )
         db.session.add(new_comment)
         db.session.commit()
